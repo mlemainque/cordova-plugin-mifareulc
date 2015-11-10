@@ -1,8 +1,8 @@
 
-mifareULCexport = {};
+mifareULCPluginExport = {};
 
-mifareULCexport.init = function(options, successCallback, failureCallback) {
-	cordova.exec(successCallback, failureCallback, 'MifarePlugin', 'init', [options]);
+mifareULCPluginExport.init = function(options, successCallback, failureCallback) {
+	cordova.exec(successCallback, failureCallback, 'MifareULCPlugin', 'init', [options]);
 }
 
-module.exports = mifareULCexport;
+module.exports = mifareULCPluginExport;

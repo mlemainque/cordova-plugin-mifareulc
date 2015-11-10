@@ -11,13 +11,13 @@
         <engine name="cordova" version=">=3.5.0"/>
     </engines>
 
-	<js-module src="www/plugin.js" name="UltralightC">
-		<clobbers target="cordova.plugins.UltralightC" />
+	<js-module src="www/plugin.js" name="MifareULC">
+		<clobbers target="cordova.plugins.MifareULC" />
 	</js-module>
 
 	<platform name="android">
 		<config-file target="res/xml/config.xml" parent="/*">
-			<feature name="MifarePlugin">
+			<feature name="MifareULCPlugin">
 				<param name="android-package" value="com.mlemainque.cordova.mifare.MifareULCPlugin"/>
 				<param name="onload" value="true"/>
 			</feature>
@@ -42,9 +42,8 @@
 			<uses-feature android:name="android.hardware.nfc" android:required="true"/>
 		</config-file>
 
-		<source-file src="libs/android/nxpnfcliblite.jar" target-dir="libs" framework="true"/>
-
-		<source-file src="src/android/MifareULCPlugin.java" target-dir="src/com/mlemainque/cordova/mifare"/>
+		<source-file src="src/android/com/mlemainque/cordova/mifare/MifareULCPlugin.java" target-dir="src/com/mlemainque/cordova/mifare"/>
+		<source-file src="src/android/com/mlemainque/cordova/mifare/Util.java" target-dir="src/com/mlemainque/cordova/mifare"/>
 		<source-file src="xml/nfc_tech_filter.xml" target-dir="res/xml"/>
 	</platform>
 

@@ -14,7 +14,7 @@ This README would normally document whatever steps are necessary to get your app
 
 ### Contribution guidelines ###
 
-* Recompiling plugin then running debug : ```ionic plugin remove com.mlemainque.cordova.mifare && ionic plugin add ../cordova-mifareulc/ && ionic run android && adb logcat | grep MifareULCPlugin```
+* Recompiling plugin then running debug : ```ionic plugin remove com.mlemainque.cordova.mifare && ionic plugin add ../cordova-mifareulc/ && ionic run android && adb logcat -c && adb logcat | grep MifareULCPlugin```
 
 ### Who do I talk to? ###
 
