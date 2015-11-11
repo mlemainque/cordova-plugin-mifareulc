@@ -120,33 +120,14 @@ public class MifareULCPlugin extends CordovaPlugin {
 							//byte[] key = Util.hexStringToByteArray("49454D4B41455242214E4143554F5945"); // FAIL
 							byte[] key = Util.hexStringToByteArray("49454D4B41455242214E4143554F5946"); // SUCCESS
 
-							/*
-							byte[] rB = Util.hexStringToByteArray("51E764602678DF2B");
-							byte[] ekrB = Util.TripleDES_encrypt(key, iv, rB);
-							iv = new byte[8];
-							byte[] rB2 = Util.TripleDES_decrypt(key, iv, ekrB);
-							iv = new byte[8];
-							Log.d(TAG, "ekrB = "+Util.bytesToHex(ekrB));
-							Log.d(TAG, "rB2 = "+Util.bytesToHex(rB2));
-							*/
-							
-							byte[] ek_rndB = ulTag.transceive(new byte[]{26, 0});
-							ek_rndB = Arrays.copyOfRange(ek_rndB, 1, 9);
-							Log.d(TAG, "ek_RndB = "+Util.bytesToHex(ek_rndB));
-
 							SecureRandom sr = new SecureRandom();
 							byte[] rndA = new byte[8];
 							sr.nextBytes(rndA);
 							Log.d(TAG, "rndA = "+Util.bytesToHex(rndA));
 
-							/*
-							byte[] iv2 = new byte[8];
-							byte[] ek_rndA = Util.TripleDES_encrypt(key, iv2, rndA);
-							Log.d(TAG, "ek_rndA = "+Util.bytesToHex(ek_rndA));
-							iv2 = new byte[8];
-							byte[] rndA2 = Util.TripleDES_decrypt(key, iv2, rndA);
-							Log.d(TAG, "rndA2 = "+Util.bytesToHex(rndA2));
-							*/
+							byte[] ek_rndB = ulTag.transceive(new byte[]{26, 0});
+							ek_rndB = Arrays.copyOfRange(ek_rndB, 1, 9);
+							Log.d(TAG, "ek_RndB = "+Util.bytesToHex(ek_rndB));
 
 							byte[] iv = new byte[8];
 
@@ -163,9 +144,7 @@ public class MifareULCPlugin extends CordovaPlugin {
 							System.arraycopy(rndBshift, 0, rndA_rndBshift, 8, 8);
 							Log.d(TAG, "rndA_rndBshift = "+Util.bytesToHex(rndA_rndBshift));
 
-							byte[] iv2 = iv.clone();
 							byte[] ek_rndA_rndBshift = Util.TripleDES_encrypt(key, iv, rndA_rndBshift);
-							iv = iv2;
 							Log.d(TAG, "ek_rndA_rndBshift = "+Util.bytesToHex(ek_rndA_rndBshift));
 
 							System.arraycopy(ek_rndA_rndBshift, ek_rndA_rndBshift.length-8, iv, 0, 8);
@@ -183,6 +162,7 @@ public class MifareULCPlugin extends CordovaPlugin {
 							byte[] rndAshift_2 = new byte[] { rndA[1], rndA[2], rndA[3], rndA[4], rndA[5], rndA[6], rndA[7], rndA[0] };
 							Log.d(TAG, "rndAshift_1 = "+Util.bytesToHex(rndAshift_1));
 							Log.d(TAG, "rndAshift_2 = "+Util.bytesToHex(rndAshift_2));
+							
 						} else {
 							Log.w(TAG, "Tag isn't an Ultralight C but "+ulTag.getType());
 							//callbackContext.error("Tag isn't an Ultralight C");
