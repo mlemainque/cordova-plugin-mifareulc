@@ -110,16 +110,15 @@ public class MifareULCPlugin extends CordovaPlugin {
 					if (ulTag != null) {
 						ulTag.connect();
 
-						if (ulTag.getType() == MifareUltralight.TYPE_ULTRALIGHT_C) {
+						if (true || ulTag.getType() == MifareUltralight.TYPE_ULTRALIGHT_C) {
 
 							Log.d(TAG, "Ultralight C authenticating ...");
 
 							ulTag.setTimeout(100);
 
 							//byte[] key = new byte[16];
-							byte[] key = Util.hexStringToByteArray("49454D4B41455242214E4143554F5945"); // FAIL
+							//byte[] key = Util.hexStringToByteArray("49454D4B41455242214E4143554F5945"); // FAIL
 							byte[] key = Util.hexStringToByteArray("49454D4B41455242214E4143554F5946"); // SUCCESS
-							byte[] iv = new byte[8];
 
 							/*
 							byte[] rB = Util.hexStringToByteArray("51E764602678DF2B");
@@ -140,15 +139,21 @@ public class MifareULCPlugin extends CordovaPlugin {
 							sr.nextBytes(rndA);
 							Log.d(TAG, "rndA = "+Util.bytesToHex(rndA));
 
+							/*
 							byte[] iv2 = new byte[8];
 							byte[] ek_rndA = Util.TripleDES_encrypt(key, iv2, rndA);
 							Log.d(TAG, "ek_rndA = "+Util.bytesToHex(ek_rndA));
 							iv2 = new byte[8];
 							byte[] rndA2 = Util.TripleDES_decrypt(key, iv2, rndA);
 							Log.d(TAG, "rndA2 = "+Util.bytesToHex(rndA2));
+							*/
+
+							byte[] iv = new byte[8];
 
 							byte[] rndB = Util.TripleDES_decrypt(key, iv, ek_rndB);
 							Log.d(TAG, "rndB = "+Util.bytesToHex(rndB));
+
+							System.arraycopy(ek_rndB, ek_rndB.length-8, iv, 0, 8);
 
 							byte[] rndBshift = new byte[] { rndB[1], rndB[2], rndB[3], rndB[4], rndB[5], rndB[6], rndB[7], rndB[0] };
 							Log.d(TAG, "rndBshift = "+Util.bytesToHex(rndBshift));
@@ -158,8 +163,12 @@ public class MifareULCPlugin extends CordovaPlugin {
 							System.arraycopy(rndBshift, 0, rndA_rndBshift, 8, 8);
 							Log.d(TAG, "rndA_rndBshift = "+Util.bytesToHex(rndA_rndBshift));
 
+							byte[] iv2 = iv.clone();
 							byte[] ek_rndA_rndBshift = Util.TripleDES_encrypt(key, iv, rndA_rndBshift);
+							iv = iv2;
 							Log.d(TAG, "ek_rndA_rndBshift = "+Util.bytesToHex(ek_rndA_rndBshift));
+
+							System.arraycopy(ek_rndA_rndBshift, ek_rndA_rndBshift.length-8, iv, 0, 8);
 
 							byte[] message = new byte[17];
 							message[0] = -81;
@@ -170,14 +179,12 @@ public class MifareULCPlugin extends CordovaPlugin {
 							ek_rndAshift = Arrays.copyOfRange(ek_rndAshift, 1, 9);
 							Log.d(TAG, "ek_rndAshift = "+Util.bytesToHex(ek_rndAshift));
 
-							byte[] rndA_shift = Util.TripleDES_decrypt(key, iv, ek_rndAshift);
-							Log.d(TAG, "rndA_shift = "+Util.bytesToHex(rndA_shift));
-
-							byte[] rndA_shift_2 = new byte[] { rndA[1], rndA[2], rndA[3], rndA[4], rndA[5], rndA[6], rndA[7], rndA[0] };
-							Log.d(TAG, "rndA_shift_1 = "+Util.bytesToHex(rndA_shift));
-							Log.d(TAG, "rndA_shift_2 = "+Util.bytesToHex(rndA_shift_2));
+							byte[] rndAshift_1 = Util.TripleDES_decrypt(key, iv, ek_rndAshift);
+							byte[] rndAshift_2 = new byte[] { rndA[1], rndA[2], rndA[3], rndA[4], rndA[5], rndA[6], rndA[7], rndA[0] };
+							Log.d(TAG, "rndAshift_1 = "+Util.bytesToHex(rndAshift_1));
+							Log.d(TAG, "rndAshift_2 = "+Util.bytesToHex(rndAshift_2));
 						} else {
-							Log.w(TAG, "Tag isn't an Ultralight C");
+							Log.w(TAG, "Tag isn't an Ultralight C but "+ulTag.getType());
 							//callbackContext.error("Tag isn't an Ultralight C");
 						}
 					} else {

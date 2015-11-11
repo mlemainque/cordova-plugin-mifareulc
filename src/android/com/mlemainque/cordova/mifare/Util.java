@@ -66,7 +66,7 @@ public class Util {
 
 		// On initialise le vecteur IV
 		final IvParameterSpec iv = new IvParameterSpec(iv_array);
-		//Log.d(TAG, "IV = "+Util.bytesToHex(iv_array));
+		Log.d(TAG, "IV = "+Util.bytesToHex(iv_array));
 
 		// On réalise l'opération
 		final Cipher cipher = Cipher.getInstance("DESede/CBC/NoPadding");
@@ -74,7 +74,7 @@ public class Util {
 		final byte[] result = cipher.doFinal(message);
 
 		// On renvoie le résultat et on modifie la valeur de IV
-		System.arraycopy(message, message.length-8, iv_array, 0, 8);
+		//System.arraycopy(message, message.length-8, iv_array, 0, 8);
 		return result;
 	}
 
