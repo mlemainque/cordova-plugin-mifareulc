@@ -3,8 +3,10 @@ package com.mlemainque.cordova.mifare;
 import java.io.IOException;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.security.SecureRandom;
 
 import org.apache.cordova.*;
 
@@ -90,6 +92,109 @@ public class MifareULCPlugin extends CordovaPlugin {
 		techLists.add(new String[] { MifareUltralight.class.getName() });
 
 		callbackContext.success();
+	}
+
+	private void readUltralightTag() {
+		if (getIntent() == null) {  // TODO remove this and handle LostTag
+			Log.w(TAG, "Failed to write tag, received null intent");
+			//callbackContext.error("Failed to write tag, received null intent");
+		}
+
+		final Tag tag = savedIntent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+
+		cordova.getThreadPool().execute(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					MifareUltralight ulTag = MifareUltralight.get(tag);
+					if (ulTag != null) {
+						ulTag.connect();
+
+						if (ulTag.getType() == MifareUltralight.TYPE_ULTRALIGHT_C) {
+
+							Log.d(TAG, "Ultralight C authenticating ...");
+
+							ulTag.setTimeout(100);
+
+							//byte[] key = new byte[16];
+							byte[] key = Util.hexStringToByteArray("49454D4B41455242214E4143554F5945"); // FAIL
+							byte[] key = Util.hexStringToByteArray("49454D4B41455242214E4143554F5946"); // SUCCESS
+							byte[] iv = new byte[8];
+
+							/*
+							byte[] rB = Util.hexStringToByteArray("51E764602678DF2B");
+							byte[] ekrB = Util.TripleDES_encrypt(key, iv, rB);
+							iv = new byte[8];
+							byte[] rB2 = Util.TripleDES_decrypt(key, iv, ekrB);
+							iv = new byte[8];
+							Log.d(TAG, "ekrB = "+Util.bytesToHex(ekrB));
+							Log.d(TAG, "rB2 = "+Util.bytesToHex(rB2));
+							*/
+							
+							byte[] ek_rndB = ulTag.transceive(new byte[]{26, 0});
+							ek_rndB = Arrays.copyOfRange(ek_rndB, 1, 9);
+							Log.d(TAG, "ek_RndB = "+Util.bytesToHex(ek_rndB));
+
+							SecureRandom sr = new SecureRandom();
+							byte[] rndA = new byte[8];
+							sr.nextBytes(rndA);
+							Log.d(TAG, "rndA = "+Util.bytesToHex(rndA));
+
+							byte[] iv2 = new byte[8];
+							byte[] ek_rndA = Util.TripleDES_encrypt(key, iv2, rndA);
+							Log.d(TAG, "ek_rndA = "+Util.bytesToHex(ek_rndA));
+							iv2 = new byte[8];
+							byte[] rndA2 = Util.TripleDES_decrypt(key, iv2, rndA);
+							Log.d(TAG, "rndA2 = "+Util.bytesToHex(rndA2));
+
+							byte[] rndB = Util.TripleDES_decrypt(key, iv, ek_rndB);
+							Log.d(TAG, "rndB = "+Util.bytesToHex(rndB));
+
+							byte[] rndBshift = new byte[] { rndB[1], rndB[2], rndB[3], rndB[4], rndB[5], rndB[6], rndB[7], rndB[0] };
+							Log.d(TAG, "rndBshift = "+Util.bytesToHex(rndBshift));
+							
+							byte[] rndA_rndBshift = new byte[16];
+							System.arraycopy(rndA, 0, rndA_rndBshift, 0, 8);
+							System.arraycopy(rndBshift, 0, rndA_rndBshift, 8, 8);
+							Log.d(TAG, "rndA_rndBshift = "+Util.bytesToHex(rndA_rndBshift));
+
+							byte[] ek_rndA_rndBshift = Util.TripleDES_encrypt(key, iv, rndA_rndBshift);
+							Log.d(TAG, "ek_rndA_rndBshift = "+Util.bytesToHex(ek_rndA_rndBshift));
+
+							byte[] message = new byte[17];
+							message[0] = -81;
+							System.arraycopy(ek_rndA_rndBshift, 0, message, 1, 16);
+							Log.d(TAG, "message = "+Util.bytesToHex(message));
+
+							byte[] ek_rndAshift = ulTag.transceive(message);
+							ek_rndAshift = Arrays.copyOfRange(ek_rndAshift, 1, 9);
+							Log.d(TAG, "ek_rndAshift = "+Util.bytesToHex(ek_rndAshift));
+
+							byte[] rndA_shift = Util.TripleDES_decrypt(key, iv, ek_rndAshift);
+							Log.d(TAG, "rndA_shift = "+Util.bytesToHex(rndA_shift));
+
+							byte[] rndA_shift_2 = new byte[] { rndA[1], rndA[2], rndA[3], rndA[4], rndA[5], rndA[6], rndA[7], rndA[0] };
+							Log.d(TAG, "rndA_shift_1 = "+Util.bytesToHex(rndA_shift));
+							Log.d(TAG, "rndA_shift_2 = "+Util.bytesToHex(rndA_shift_2));
+						} else {
+							Log.w(TAG, "Tag isn't an Ultralight C");
+							//callbackContext.error("Tag isn't an Ultralight C");
+						}
+					} else {
+						Log.w(TAG, "Tag isn't an Ultralight");
+						//callbackContext.error("Tag isn't an Ultralight");
+					}
+				} catch (TagLostException e) {
+					//callbackContext.error(e.getMessage());
+					Log.w(TAG, e.getMessage());
+				} catch (IOException e) {
+					//callbackContext.error(e.getMessage());
+					Log.w(TAG, e.getMessage());
+				} catch (Exception e) {
+					Log.w(TAG, e.getMessage());
+				}
+			}
+		});
 	}
 
 	private void createPendingIntent() {
@@ -183,9 +288,7 @@ public class MifareULCPlugin extends CordovaPlugin {
 					for (String tagTech : tag.getTechList()) {
 						Log.d(TAG, tagTech);
 					}
-				}
-				else if (action.equals(NfcAdapter.ACTION_TAG_DISCOVERED)) {
-					fireTagEvent(tag);
+					readUltralightTag();
 				}
 
 				setIntent(new Intent());
