@@ -32,6 +32,9 @@ import android.util.Log;
 public class MifareULCPlugin extends CordovaPlugin {
 
 	private static final String INIT = "init";
+	private static final String AUTHENTICATE = "authenticate";
+	private static final String READ = "readPages";
+	private static final String WRITE = "writePage";
 
 	private static final String TAG_DEFAULT = "tag";
 
@@ -48,8 +51,10 @@ public class MifareULCPlugin extends CordovaPlugin {
 
 	private Intent savedIntent = null;
 
+	private MifareUltralight ulcTag = null;
+
 	@Override
-	public boolean execute(String action, JSONArray data, CallbackContext callbackContext) throws JSONException {
+	public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
 
 		Log.d(TAG, "execute " + action);
 
@@ -62,6 +67,12 @@ public class MifareULCPlugin extends CordovaPlugin {
 
 		if (action.equalsIgnoreCase(INIT)) {
 			init(callbackContext);
+		} else if (action.equalsIgnoreCase(AUTHENTICATE)) {
+			authenticateUltralightCTag(args, callbackContext);
+		} else if (action.equalsIgnoreCase(READ)) {
+			readUltralightCTag(args, callbackContext);
+		} else if (action.equalsIgnoreCase(WRITE)) {
+			writeUltralightCTag(args, callbackContext);
 		} else {
 			return false;
 		}
@@ -94,90 +105,208 @@ public class MifareULCPlugin extends CordovaPlugin {
 		callbackContext.success();
 	}
 
-	private void readUltralightTag() {
+	private void readUltralightCTag(JSONArray args, final CallbackContext callbackContext) {
 		if (getIntent() == null) {  // TODO remove this and handle LostTag
 			Log.w(TAG, "Failed to write tag, received null intent");
-			//callbackContext.error("Failed to write tag, received null intent");
+			callbackContext.error("Failed to write tag, received null intent");
+			return;
 		}
 
-		final Tag tag = savedIntent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+		if (ulcTag == null) {  // TODO remove this and handle LostTag
+			Log.w(TAG, "No Mifare Ultralight C tag detected");
+			callbackContext.error("No Mifare Ultralight C tag detected");
+			return;
+		}
+
+		final int sector;
+		try {
+			sector = args.getInt(0);
+		} catch (JSONException e) {
+			callbackContext.error(e.getMessage());
+			Log.w(TAG, e.getMessage());
+			return;
+		}
+
+		//final Tag tag = savedIntent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
 
 		cordova.getThreadPool().execute(new Runnable() {
 			@Override
 			public void run() {
 				try {
-					MifareUltralight ulTag = MifareUltralight.get(tag);
-					if (ulTag != null) {
-						ulTag.connect();
+					Log.d(TAG, "Ultralight C reading 4 sectors from "+sector);
+					byte data[] = ulcTag.readPages(sector);
 
-						if (true || ulTag.getType() == MifareUltralight.TYPE_ULTRALIGHT_C) {
-
-							Log.d(TAG, "Ultralight C authenticating ...");
-
-							ulTag.setTimeout(100);
-
-							//byte[] key = new byte[16];
-							//byte[] key = Util.hexStringToByteArray("49454D4B41455242214E4143554F5945"); // FAIL
-							byte[] key = Util.hexStringToByteArray("49454D4B41455242214E4143554F5946"); // SUCCESS
-
-							SecureRandom sr = new SecureRandom();
-							byte[] rndA = new byte[8];
-							sr.nextBytes(rndA);
-							Log.d(TAG, "rndA = "+Util.bytesToHex(rndA));
-
-							byte[] ek_rndB = ulTag.transceive(new byte[]{26, 0});
-							ek_rndB = Arrays.copyOfRange(ek_rndB, 1, 9);
-							Log.d(TAG, "ek_RndB = "+Util.bytesToHex(ek_rndB));
-
-							byte[] iv = new byte[8];
-
-							byte[] rndB = Util.TripleDES_decrypt(key, iv, ek_rndB);
-							Log.d(TAG, "rndB = "+Util.bytesToHex(rndB));
-
-							System.arraycopy(ek_rndB, ek_rndB.length-8, iv, 0, 8);
-
-							byte[] rndBshift = new byte[] { rndB[1], rndB[2], rndB[3], rndB[4], rndB[5], rndB[6], rndB[7], rndB[0] };
-							Log.d(TAG, "rndBshift = "+Util.bytesToHex(rndBshift));
-							
-							byte[] rndA_rndBshift = new byte[16];
-							System.arraycopy(rndA, 0, rndA_rndBshift, 0, 8);
-							System.arraycopy(rndBshift, 0, rndA_rndBshift, 8, 8);
-							Log.d(TAG, "rndA_rndBshift = "+Util.bytesToHex(rndA_rndBshift));
-
-							byte[] ek_rndA_rndBshift = Util.TripleDES_encrypt(key, iv, rndA_rndBshift);
-							Log.d(TAG, "ek_rndA_rndBshift = "+Util.bytesToHex(ek_rndA_rndBshift));
-
-							System.arraycopy(ek_rndA_rndBshift, ek_rndA_rndBshift.length-8, iv, 0, 8);
-
-							byte[] message = new byte[17];
-							message[0] = -81;
-							System.arraycopy(ek_rndA_rndBshift, 0, message, 1, 16);
-							Log.d(TAG, "message = "+Util.bytesToHex(message));
-
-							byte[] ek_rndAshift = ulTag.transceive(message);
-							ek_rndAshift = Arrays.copyOfRange(ek_rndAshift, 1, 9);
-							Log.d(TAG, "ek_rndAshift = "+Util.bytesToHex(ek_rndAshift));
-
-							byte[] rndAshift_1 = Util.TripleDES_decrypt(key, iv, ek_rndAshift);
-							byte[] rndAshift_2 = new byte[] { rndA[1], rndA[2], rndA[3], rndA[4], rndA[5], rndA[6], rndA[7], rndA[0] };
-							Log.d(TAG, "rndAshift_1 = "+Util.bytesToHex(rndAshift_1));
-							Log.d(TAG, "rndAshift_2 = "+Util.bytesToHex(rndAshift_2));
-							
-						} else {
-							Log.w(TAG, "Tag isn't an Ultralight C but "+ulTag.getType());
-							//callbackContext.error("Tag isn't an Ultralight C");
-						}
-					} else {
-						Log.w(TAG, "Tag isn't an Ultralight");
-						//callbackContext.error("Tag isn't an Ultralight");
-					}
+					Log.d(TAG, Util.bytesToHex(data));
+					JSONObject result = new JSONObject();
+					result.put("data", Util.byteArrayToJSON(data));
+					result.put("sector", sector);
+					callbackContext.success(result);
 				} catch (TagLostException e) {
-					//callbackContext.error(e.getMessage());
+					callbackContext.error(e.getMessage());
 					Log.w(TAG, e.getMessage());
 				} catch (IOException e) {
-					//callbackContext.error(e.getMessage());
+					callbackContext.error(e.getMessage());
 					Log.w(TAG, e.getMessage());
 				} catch (Exception e) {
+					callbackContext.error(e.getMessage());
+					Log.w(TAG, e.getMessage());
+				}
+			}
+		});
+	}
+
+	private void writeUltralightCTag(JSONArray args, final CallbackContext callbackContext) {
+		if (getIntent() == null) {  // TODO remove this and handle LostTag
+			Log.w(TAG, "Failed to write tag, received null intent");
+			callbackContext.error("Failed to write tag, received null intent");
+			return;
+		}
+
+		if (ulcTag == null) {  // TODO remove this and handle LostTag
+			Log.w(TAG, "No Mifare Ultralight C tag detected");
+			callbackContext.error("No Mifare Ultralight C tag detected");
+			return;
+		}
+
+		final int sector;
+		final byte[] data;
+		try {
+			sector = args.getInt(0);
+			data = Util.jsonToByteArray(args.getJSONArray(1));
+		} catch (JSONException e) {
+			callbackContext.error(e.getMessage());
+			Log.w(TAG, e.getMessage());
+			return;
+		}
+
+		if (data.length != 16) {
+			Log.w(TAG, "Wrong data size : "+data.length);
+			callbackContext.error("Wrong data size : "+data.length);
+			return;
+		}
+
+		//final Tag tag = savedIntent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+
+		cordova.getThreadPool().execute(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Log.d(TAG, "Ultralight C writing sector "+sector);
+					ulcTag.writePage(sector, data);
+					callbackContext.success();
+				} catch (TagLostException e) {
+					callbackContext.error(e.getMessage());
+					Log.w(TAG, e.getMessage());
+				} catch (IOException e) {
+					callbackContext.error(e.getMessage());
+					Log.w(TAG, e.getMessage());
+				} catch (Exception e) {
+					callbackContext.error(e.getMessage());
+					Log.w(TAG, e.getMessage());
+				}
+			}
+		});
+	}
+
+	private void authenticateUltralightCTag(JSONArray args, final CallbackContext callbackContext) {
+		if (getIntent() == null) {  // TODO remove this and handle LostTag
+			Log.w(TAG, "Failed to write tag, received null intent");
+			callbackContext.error("Failed to write tag, received null intent");
+			return;
+		}
+
+		if (ulcTag == null) {  // TODO remove this and handle LostTag
+			Log.w(TAG, "No Mifare Ultralight C tag detected");
+			callbackContext.error("No Mifare Ultralight C tag detected");
+			return;
+		}
+
+		final byte[] key;
+		try {
+			key = Util.jsonToByteArray(args.getJSONArray(0));
+		} catch (JSONException e) {
+			callbackContext.error(e.getMessage());
+			Log.w(TAG, e.getMessage());
+			return;
+		}
+
+		if (key.length != 16) {
+			Log.w(TAG, "Wrong key size : "+key.length);
+			callbackContext.error("Wrong key size : "+key.length);
+			return;
+		}
+
+		//final Tag tag = savedIntent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+
+		cordova.getThreadPool().execute(new Runnable() {
+			@Override
+			public void run() {
+				try {
+					Log.d(TAG, "Ultralight C authenticating ...");
+
+					ulcTag.setTimeout(100);
+
+					//byte[] key = new byte[16];
+					//byte[] key = Util.hexStringToByteArray("49454D4B41455242214E4143554F5945"); // FAIL
+					//byte[] key = Util.hexStringToByteArray("49454D4B41455242214E4143554F5946"); // SUCCESS
+
+					SecureRandom sr = new SecureRandom();
+					byte[] rndA = new byte[8];
+					sr.nextBytes(rndA);
+					Log.d(TAG, "rndA = "+Util.bytesToHex(rndA));
+
+					byte[] ek_rndB = ulcTag.transceive(new byte[]{26, 0});
+					ek_rndB = Arrays.copyOfRange(ek_rndB, 1, 9);
+					Log.d(TAG, "ek_RndB = "+Util.bytesToHex(ek_rndB));
+
+					byte[] iv = new byte[8];
+
+					byte[] rndB = Util.TripleDES_decrypt(key, iv, ek_rndB);
+					Log.d(TAG, "rndB = "+Util.bytesToHex(rndB));
+
+					System.arraycopy(ek_rndB, ek_rndB.length-8, iv, 0, 8);
+
+					byte[] rndBshift = new byte[] { rndB[1], rndB[2], rndB[3], rndB[4], rndB[5], rndB[6], rndB[7], rndB[0] };
+					Log.d(TAG, "rndBshift = "+Util.bytesToHex(rndBshift));
+					
+					byte[] rndA_rndBshift = new byte[16];
+					System.arraycopy(rndA, 0, rndA_rndBshift, 0, 8);
+					System.arraycopy(rndBshift, 0, rndA_rndBshift, 8, 8);
+					Log.d(TAG, "rndA_rndBshift = "+Util.bytesToHex(rndA_rndBshift));
+
+					byte[] ek_rndA_rndBshift = Util.TripleDES_encrypt(key, iv, rndA_rndBshift);
+					Log.d(TAG, "ek_rndA_rndBshift = "+Util.bytesToHex(ek_rndA_rndBshift));
+
+					System.arraycopy(ek_rndA_rndBshift, ek_rndA_rndBshift.length-8, iv, 0, 8);
+
+					byte[] message = new byte[17];
+					message[0] = -81;
+					System.arraycopy(ek_rndA_rndBshift, 0, message, 1, 16);
+					Log.d(TAG, "message = "+Util.bytesToHex(message));
+
+					byte[] ek_rndAshift = ulcTag.transceive(message);
+					ek_rndAshift = Arrays.copyOfRange(ek_rndAshift, 1, 9);
+					Log.d(TAG, "ek_rndAshift = "+Util.bytesToHex(ek_rndAshift));
+
+					byte[] rndAshift_1 = Util.TripleDES_decrypt(key, iv, ek_rndAshift);
+					byte[] rndAshift_2 = new byte[] { rndA[1], rndA[2], rndA[3], rndA[4], rndA[5], rndA[6], rndA[7], rndA[0] };
+					Log.d(TAG, "rndAshift_1 = "+Util.bytesToHex(rndAshift_1));
+					Log.d(TAG, "rndAshift_2 = "+Util.bytesToHex(rndAshift_2));
+
+					for (int i = 0 ; i < 8 ; i++) {
+						if (rndAshift_1[i] != rndAshift_2[i]) {
+							callbackContext.error("This tag is a pirate");
+						}
+					}
+					callbackContext.success();
+				} catch (TagLostException e) {
+					callbackContext.error(e.getMessage());
+					Log.w(TAG, e.getMessage());
+				} catch (IOException e) {
+					callbackContext.error(e.getMessage());
+					Log.w(TAG, e.getMessage());
+				} catch (Exception e) {
+					callbackContext.error(e.getMessage());
 					Log.w(TAG, e.getMessage());
 				}
 			}
@@ -270,12 +399,32 @@ public class MifareULCPlugin extends CordovaPlugin {
 				}
 
 				Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+				ulcTag = null;
 
 				if (action.equals(NfcAdapter.ACTION_TECH_DISCOVERED)) {
+					MifareUltralight ulTag = MifareUltralight.get(tag);
+					if (ulTag != null) {
+						try {
+							ulTag.connect();
+							if (ulTag.getType() == MifareUltralight.TYPE_ULTRALIGHT_C) {
+								ulcTag = ulTag;
+							} else {
+								Log.w(TAG, "Tag isn't an Ultralight C but "+ulTag.getType());
+							}
+						} catch (IOException e) {
+							Log.w(TAG, e.getMessage());
+						}
+					} else {
+						Log.w(TAG, "Tag isn't an Ultralight");
+					}
+
+
+
 					for (String tagTech : tag.getTechList()) {
 						Log.d(TAG, tagTech);
 					}
-					readUltralightTag();
+					//tag = savedIntent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+					fireTagEvent(tag);
 				}
 
 				setIntent(new Intent());
