@@ -179,7 +179,7 @@ public class MifareULCPlugin extends CordovaPlugin {
 			return;
 		}
 
-		if (data.length != 16) {
+		if (data.length != 4) {
 			Log.w(TAG, "Wrong data size : "+data.length);
 			callbackContext.error("Wrong data size : "+data.length);
 			return;
