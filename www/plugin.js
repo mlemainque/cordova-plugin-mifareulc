@@ -50,6 +50,33 @@ mifareULCPlugin.writePage = function(page, data, successCallback, failureCallbac
 }
 
 /**
+ * Read OTP page
+ * @param  {Function}		successCallback
+ * @param  {Function}		failureCallback
+ * @return nothing
+ */
+mifareULCPlugin.readOTP = function(successCallback, failureCallback) {
+    mifareULCPlugin.readPages(3, function(e) {
+        successCallback(e.data.slice(0, 4).join().toString(2));
+    });
+}
+
+/**
+ * Set OTP bit
+ * @param  {Function}		successCallback
+ * @param  {Function}		failureCallback
+ * @return nothing
+ */
+mifareULCPlugin.setOTP = function(data, successCallback, failureCallback) {
+    var splitted_data = [];
+    for (var i = 0 ; i < 4 ; i++) {
+        splitted_data.push(parseInt(data.slice(j*8, (j+1)*8), 2));
+    }
+    console.log(splitted_data);
+	//cordova.exec(successCallback, failureCallback, 'MifareULCPlugin', 'writePage', [3, splitted_data]);
+}
+
+/**
  * Set AUTH0 parameter eg. the page number from which authentication will be required
  * @param  {Integer}		page			Page number from which authentication will be required (from 0 to 48)
  * @param  {Function}		successCallback
@@ -108,13 +135,33 @@ mifareULCPlugin.removeTagDiscoveredListener = function(callback) {
 }
 
 /**
- * Dump every available data from the tag
+ * Dump every available data from the C tag
  * @param  {Function}		successCallback
  * @param  {Function}		failureCallback
  * @return nothing
  */
 mifareULCPlugin.dumpUltralightC = function(successCallback, failureCallback) {
 	for (var i = 0 ; i < 48 ; i += 4) {
+		mifareULCPlugin.readPages(i, function(e) {
+			for (j = 0 ; j < 4 ; j++) {
+				successCallback({
+					sector: e.sector+j,
+					data: e.data.slice(j*4, (j+1)*4)
+				});
+			}
+		},
+		failureCallback);
+	}
+}
+
+/**
+ * Dump every available data from the tag
+ * @param  {Function}		successCallback
+ * @param  {Function}		failureCallback
+ * @return nothing
+ */
+mifareULCPlugin.dumpUltralight = function(successCallback, failureCallback) {
+	for (var i = 0 ; i < 16 ; i += 4) {
 		mifareULCPlugin.readPages(i, function(e) {
 			for (j = 0 ; j < 4 ; j++) {
 				successCallback({

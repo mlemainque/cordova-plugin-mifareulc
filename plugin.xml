@@ -12,7 +12,7 @@
     </engines>
 
 	<js-module src="www/plugin.js" name="MifareULC">
-		<clobbers target="cordova.plugins.MifareULC" />
+		<clobbers target="mifareULCPlugin" />
 	</js-module>
 
 	<platform name="android">
