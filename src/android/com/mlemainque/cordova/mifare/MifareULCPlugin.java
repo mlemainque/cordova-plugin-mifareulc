@@ -52,6 +52,7 @@ public class MifareULCPlugin extends CordovaPlugin {
 	private Intent savedIntent = null;
 
 	private MifareUltralight ulcTag = null;
+	private MifareUltralight ulTag = null;
 
 	@Override
 	public boolean execute(String action, JSONArray args, CallbackContext callbackContext) throws JSONException {
@@ -70,9 +71,9 @@ public class MifareULCPlugin extends CordovaPlugin {
 		} else if (action.equalsIgnoreCase(AUTHENTICATE)) {
 			authenticateUltralightCTag(args, callbackContext);
 		} else if (action.equalsIgnoreCase(READ)) {
-			readUltralightCTag(args, callbackContext);
+			readUltralightTag(args, callbackContext);
 		} else if (action.equalsIgnoreCase(WRITE)) {
-			writeUltralightCTag(args, callbackContext);
+			writeUltralightTag(args, callbackContext);
 		} else {
 			return false;
 		}
@@ -105,16 +106,16 @@ public class MifareULCPlugin extends CordovaPlugin {
 		callbackContext.success();
 	}
 
-	private void readUltralightCTag(JSONArray args, final CallbackContext callbackContext) {
+	private void readUltralightTag(JSONArray args, final CallbackContext callbackContext) {
 		if (getIntent() == null) {  // TODO remove this and handle LostTag
 			Log.w(TAG, "Failed to write tag, received null intent");
 			callbackContext.error("Failed to write tag, received null intent");
 			return;
 		}
 
-		if (ulcTag == null) {  // TODO remove this and handle LostTag
-			Log.w(TAG, "No Mifare Ultralight C tag detected");
-			callbackContext.error("No Mifare Ultralight C tag detected");
+		if (ulTag == null) {  // TODO remove this and handle LostTag
+			Log.w(TAG, "No Mifare Ultralight tag detected");
+			callbackContext.error("No Mifare Ultralight tag detected");
 			return;
 		}
 
@@ -134,7 +135,7 @@ public class MifareULCPlugin extends CordovaPlugin {
 			public void run() {
 				try {
 					Log.d(TAG, "Ultralight C reading 4 sectors from "+sector);
-					byte data[] = ulcTag.readPages(sector);
+					byte data[] = ulTag.readPages(sector);
 
 					Log.d(TAG, Util.bytesToHex(data));
 					JSONObject result = new JSONObject();
@@ -155,16 +156,16 @@ public class MifareULCPlugin extends CordovaPlugin {
 		});
 	}
 
-	private void writeUltralightCTag(JSONArray args, final CallbackContext callbackContext) {
+	private void writeUltralightTag(JSONArray args, final CallbackContext callbackContext) {
 		if (getIntent() == null) {  // TODO remove this and handle LostTag
 			Log.w(TAG, "Failed to write tag, received null intent");
 			callbackContext.error("Failed to write tag, received null intent");
 			return;
 		}
 
-		if (ulcTag == null) {  // TODO remove this and handle LostTag
-			Log.w(TAG, "No Mifare Ultralight C tag detected");
-			callbackContext.error("No Mifare Ultralight C tag detected");
+		if (ulTag == null) {  // TODO remove this and handle LostTag
+			Log.w(TAG, "No Mifare Ultralight tag detected");
+			callbackContext.error("No Mifare Ultralight tag detected");
 			return;
 		}
 
@@ -192,7 +193,7 @@ public class MifareULCPlugin extends CordovaPlugin {
 			public void run() {
 				try {
 					Log.d(TAG, "Ultralight C writing sector "+sector);
-					ulcTag.writePage(sector, data);
+					ulTag.writePage(sector, data);
 					callbackContext.success();
 				} catch (TagLostException e) {
 					callbackContext.error(e.getMessage());
@@ -399,17 +400,16 @@ public class MifareULCPlugin extends CordovaPlugin {
 				}
 
 				Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+				ulTag = null;
 				ulcTag = null;
 
 				if (action.equals(NfcAdapter.ACTION_TECH_DISCOVERED)) {
-					MifareUltralight ulTag = MifareUltralight.get(tag);
+					ulTag = MifareUltralight.get(tag);
 					if (ulTag != null) {
 						try {
 							ulTag.connect();
 							if (ulTag.getType() == MifareUltralight.TYPE_ULTRALIGHT_C) {
 								ulcTag = ulTag;
-							} else {
-								Log.w(TAG, "Tag isn't an Ultralight C but "+ulTag.getType());
 							}
 						} catch (IOException e) {
 							Log.w(TAG, e.getMessage());
