@@ -194,7 +194,9 @@ public class MifareULCPlugin extends CordovaPlugin {
 				try {
 					Log.d(TAG, "Ultralight C writing sector "+sector);
 					ulTag.writePage(sector, data);
-					callbackContext.success();
+					JSONObject result = new JSONObject();
+					result.put("sector", sector);
+					callbackContext.success(result);
 				} catch (TagLostException e) {
 					callbackContext.error(e.getMessage());
 					Log.w(TAG, e.getMessage());
